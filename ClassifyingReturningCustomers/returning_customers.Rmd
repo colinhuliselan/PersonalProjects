@@ -6,6 +6,8 @@ output:
     toc: true
 ---
 
+<!-- returning_customers.md is generated from returning_customers.Rmd. Please edit that file -->
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       fig.path = "README_figs/README-")
@@ -168,7 +170,7 @@ cat('Pareto/NBD parameters (r, alpha, s, beta):',  round(pnbd_params, 2), '\n',
 
 We have now arrived at making our return prediction. Here some caution is warranted. One of the central results of the BTYD models is the so-called 'P(alive)' statistic. This statistic represents --- at a certain point in time --- the probability that a customer is alive, or has not yet churned. With the attention that this statistic receives, one might be tempted to (erroneously) use this statistic to make our return prediction. It should be noted however, that *a customer being alive is no guarantee of the customer actually making a purchase over the next period*. A customer might simply purchase infrequently, meaning they might not return over our half-year prediction interval. 
 
-What some might not know is that these models are directly capable of producing a probability for a customer making at least one purchase over the next period. Derivations for these probabilities can be found [here](http://www.brucehardie.com/notes/028/pareto_nbd_conditional_pmf.pdf) for the Pareto/NBD model and [here](http://www.brucehardie.com/notes/039/bgnbd_derivation__2019-11-06.pdf) for the BG/NBD model. As a testament to how easy this is to miss, this probability is unfortunately not implemented in the `BTYD` package. In contrast to the 'P(alive)' statistic, we'll therefore have to code these probabilities ourselves. The code (hidden by default) for calculating **'return probability'** using the Pareto/NBD or BG/NBD model can be found below. It is written such that it can be combined seamlessly with the `BTYD` package.
+What some might not know is that these models are directly capable of producing a probability for a customer making at least one purchase over the next period. Derivations for these probabilities can be found [here](http://www.brucehardie.com/notes/028/pareto_nbd_conditional_pmf.pdf) for the Pareto/NBD model and [here](http://www.brucehardie.com/notes/039/bgnbd_derivation__2019-11-06.pdf) for the BG/NBD model. As a testament to how easy this is to miss, this probability is unfortunately not implemented in the `BTYD` package. In contrast to the 'P(alive)' statistic, we'll therefore have to code these probabilities ourselves. The code  for calculating **'return probability'** using the Pareto/NBD or BG/NBD model can be found below. It is written such that it can be combined seamlessly with the `BTYD` package.
 
 ```{r return probability, class.source = 'fold-hide', message = FALSE}
 pnbd.ConditionalReturnProbability <- function (params, T.star, x, t.x, T.cal) 

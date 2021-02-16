@@ -14,6 +14,8 @@ Classifying returning customers
 -   [5. Wrap-up](#wrap-up)
 -   [References](#references)
 
+<!-- returning_customers.md is generated from returning_customers.Rmd. Please edit that file -->
+
 In this project we use the [CDNOW
 dataset](https://www.brucehardie.com/datasets/) to compare methods for
 predicting which of a company’s customers will returns over a future
@@ -319,10 +321,10 @@ for the Pareto/NBD model and
 for the BG/NBD model. As a testament to how easy this is to miss, this
 probability is unfortunately not implemented in the `BTYD` package. In
 contrast to the ‘P(alive)’ statistic, we’ll therefore have to code these
-probabilities ourselves. The code (hidden by default) for calculating
-**‘return probability’** using the Pareto/NBD or BG/NBD model can be
-found below. It is written such that it can be combined seamlessly with
-the `BTYD` package.
+probabilities ourselves. The code for calculating **‘return
+probability’** using the Pareto/NBD or BG/NBD model can be found below.
+It is written such that it can be combined seamlessly with the `BTYD`
+package.
 
 ``` r
 pnbd.ConditionalReturnProbability <- function (params, T.star, x, t.x, T.cal) 

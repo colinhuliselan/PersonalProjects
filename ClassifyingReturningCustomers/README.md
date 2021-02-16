@@ -6,6 +6,7 @@
 > - Differences between models were small, with Pareto/NBD performing slightly better on AUROC and log-loss
 > - Popular P(alive) statistic is not approporiate for this task. We provide an alternative 'return probability' in code.
 > - Software/packages used: `R`, [`dplyr`](https://cran.r-project.org/web/packages/dplyr/index.html), [`BTYD`](https://CRAN.R-project.org/package=BTYD), [`ggplot2`](https://cran.r-project.org/web/packages/ggplot2/index.html)
+> - See [`returning_customers.md`](returning_customers.md) for code and a detailed discussion.
 
 ## Motivation
 Predicting a customer's purchase behaviour is a central subject within data science for (e-)commerce. In this project we look at one specific prediction, which is that of figuring out which of our customers will return over the next period. Here, accurate predictions could be of great value, for example in guiding marketing efforts. For instance we might want to target campaigns that promote activity to those customers who we expect to not return in the near future. On the other hand we might want to 'reward' those who will. 
@@ -38,6 +39,14 @@ Differences between the Pareto/NBD and BG/NBD model seem minimal. Let's look at 
 |BG/NBD (Return prob.) |0.7882 |  0.4244|
 
 Again, differences are small. Yet, the Pareto/NBD might perform marginally better for our data set.
+
+## Files in this repository
+- [`returning_customers.md`](returning_customers.md): Detailed discussion of this project including code, data analysis etc..
+- [`returning_customers.Rmd`](eturning_customers.Rmd): Used to generate [`returning_customers.md`](returning_customers.md).
+- [`returning_customers.R`](returning_customers.R): Raw code.
+- `data`: Contains the data used in this project.
+- `README_figs`: Contains figures used in [`returning_customers.md`](returning_customers.md).
+
 
 ## References
 [1] [Fader, Peter S. and Bruce G.,S. Hardie, (2001), "Forecasting Repeat Sales at CDNOW: A Case Study," Interfaces, 31 (May-June), Part 2 of 2, S94-S107.](https://doi.org/10.1287/mnsc.33.1.1)   
