@@ -1,23 +1,36 @@
----
-title: "Classifying returning customers"
-author: '[Colin Huliselan](https://github.com/colinhuliselan)'
-output:
-  html_document:
-    keep_md: true
-    toc: yes
-    df_print: paged
-    code_folding: show
----
+Classifying returning customers
+================
+[Colin Huliselan](https://github.com/colinhuliselan)
 
+-   [1. Imports](#imports)
+-   [2. Data preparation and analysis](#data-preparation-and-analysis)
+-   [3. Predicting returns](#predicting-returns)
+    -   [3.1 Pareto/NBD and BG/NBD model](#paretonbd-and-bgnbd-model)
+    -   [3.2 Baseline heuristics](#baseline-heuristics)
+-   [4. Evaluating predictions](#evaluating-predictions)
+    -   [4.1 Cut-off dependent measures](#cut-off-dependent-measures)
+    -   [4.1 Cut-off independent
+        measures](#cut-off-independent-measures)
+-   [5. Wrap-up](#wrap-up)
+-   [References](#references)
 
+In this project we use the [CDNOW
+dataset](https://www.brucehardie.com/datasets/) to compare methods for
+predicting which of a company’s customers will returns over a future
+period. Such predictions could be of great value, for instance in
+guiding marketing efforts. Here we might want to specifically target
+those customers that we predict wouldn’t return, in order to potentially
+change their mind. Conversely, other marketing campaigns might serve to
+reward our active customers, in which case we only want to spend money
+on those that we expect to actually be active in the future.
 
-In this project we use the [CDNOW dataset](https://www.brucehardie.com/datasets/) to compare methods for predicting which of a company’s customers will returns over a future period. Such predictions could be of great value, for instance in guiding marketing efforts. Here we might want to specifically target those customers that we predict wouldn’t return, in order to potentially change their mind. Conversely, other marketing campaigns might serve to reward our active customers, in which case we only want to spend money on those that we expect to actually be active in the future.  
-
-First we explore the data and provide some high-level analysis. We then train two models and design an intuitive baseline to help determine the value of our models. Lastly we analyze model performance.  
+First we explore the data and provide some high-level analysis. We then
+train two models and design an intuitive baseline to help determine the
+value of our models. Lastly we analyze model performance.
 
 ## 1. Imports
 
-```r
+``` r
 # Import libraries
 library(dplyr)
 library(BTYD)
@@ -32,30 +45,34 @@ cat('Number of rows: ', nrow(df), '\n',
     'Number of columns: ', ncol(df), sep = '')
 ```
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["V1"],"name":[1],"type":["int"],"align":["right"]},{"label":["V2"],"name":[2],"type":["int"],"align":["right"]},{"label":["V3"],"name":[3],"type":["int"],"align":["right"]},{"label":["V4"],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"1","2":"19970101","3":"1","4":"11.77","_rn_":"1"},{"1":"2","2":"19970112","3":"1","4":"12.00","_rn_":"2"},{"1":"2","2":"19970112","3":"5","4":"77.00","_rn_":"3"},{"1":"3","2":"19970102","3":"2","4":"20.76","_rn_":"4"},{"1":"3","2":"19970330","3":"2","4":"20.76","_rn_":"5"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
-
-```
-## Number of rows: 69659
-## Number of columns: 4
-```
+    ##   V1       V2 V3    V4
+    ## 1  1 19970101  1 11.77
+    ## 2  2 19970112  1 12.00
+    ## 3  2 19970112  5 77.00
+    ## 4  3 19970102  2 20.76
+    ## 5  3 19970330  2 20.76
+    ## Number of rows: 69659
+    ## Number of columns: 4
 
 ## 2. Data preparation and analysis
 
-In this project we use the CDNOW data set which can be found on Bruce Hardie's personal [website](https://www.brucehardie.com/datasets/). The current variable names are not very informative. We learn can more about the data by looking at the `read_me_CDNOW_master.txt` file that came with the dataset. Here we learn that the four columns are equal to:
+In this project we use the CDNOW data set which can be found on Bruce
+Hardie’s personal [website](https://www.brucehardie.com/datasets/). The
+current variable names are not very informative. We learn can more about
+the data by looking at the `read_me_CDNOW_master.txt` file that came
+with the dataset. Here we learn that the four columns are equal to:
 
-* the customer's ID
-* the date of the transaction
-* the number of CDs purchased
-* the dollar value of the transaction.
+-   the customer’s ID
+-   the date of the transaction
+-   the number of CDs purchased
+-   the dollar value of the transaction.
 
-The [`BTYD`](https://CRAN.R-project.org/package=BTYD) package we use throughout this project actually has a standard naming convention for these variables. Besides renaming our variables, we need to transform our date variable to the right variable type.
+The [`BTYD`](https://CRAN.R-project.org/package=BTYD) package we use
+throughout this project actually has a standard naming convention for
+these variables. Besides renaming our variables, we need to transform
+our date variable to the right variable type.
 
-
-```r
+``` r
 # Change the column names
 colnames(df) <- c('cust', 'date', 'quantity', 'sales')
 
@@ -63,10 +80,10 @@ colnames(df) <- c('cust', 'date', 'quantity', 'sales')
 df$date <- as.Date(as.character(df$date), format = "%Y%m%d")
 ```
 
-We can now retrieve some basic statistics to learn more about our dataset.
+We can now retrieve some basic statistics to learn more about our
+dataset.
 
-
-```r
+``` r
 # Basic statistics
 df_basicstats <- df %>%
   summarise('Number of customers' = length(unique(cust)),
@@ -83,23 +100,34 @@ df_basicstats <- df %>%
 df_basicstats
 ```
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Statistic"],"name":[1],"type":["chr"],"align":["left"]}],"data":[{"1":"23570","_rn_":"Number of customers"},{"1":"69659","_rn_":"Number of transactions"},{"1":"1997-01-01","_rn_":"Begin period"},{"1":"1998-06-30","_rn_":"End period"},{"1":"2.96","_rn_":"Avg. number of transactions per customer"},{"1":"35.89","_rn_":"Avg. transaction value"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+    ##                                           Statistic
+    ## Number of customers                           23570
+    ## Number of transactions                        69659
+    ## Begin period                             1997-01-01
+    ## End period                               1998-06-30
+    ## Avg. number of transactions per customer       2.96
+    ## Avg. transaction value                        35.89
 
 Our data consists of 23.570 customers who in total make 69.659 purchases
-over the period 1997-01-01 until 1998-06-30. As mentioned in the `read_me_CDNOW_master.txt` file, all these customers made their first purchase in the first quarter of 1997, such that for these customers this dataset contains their entire purchase history until 1998-06-30.
+over the period 1997-01-01 until 1998-06-30. As mentioned in the
+`read_me_CDNOW_master.txt` file, all these customers made their first
+purchase in the first quarter of 1997, such that for these customers
+this dataset contains their entire purchase history until 1998-06-30.
 
-In this project we test our models by predicting outcomes for a hold-out period which spans the last half year of our data: 1998-01-01 until 1998-06-30. As one would if he/she were to actually make predictions for the next period, we next look at our training data in a little more detail. A good starting point can be to analyze our customers through creating so-called [RFM](https://en.wikipedia.org/wiki/RFM_(market_research)) variables. For each customer, we calculate three statistics:
+In this project we test our models by predicting outcomes for a hold-out
+period which spans the last half year of our data: 1998-01-01 until
+1998-06-30. As one would if he/she were to actually make predictions for
+the next period, we next look at our training data in a little more
+detail. A good starting point can be to analyze our customers through
+creating so-called
+[RFM](https://en.wikipedia.org/wiki/RFM_(market_research)) variables.
+For each customer, we calculate three statistics:
 
-* **Recency** = days since last transaction
-* **Frequency** = number of transactions
-* **Monetary value** = Avg. transaction value
+-   **Recency** = days since last transaction
+-   **Frequency** = number of transactions
+-   **Monetary value** = Avg. transaction value
 
-
-```r
+``` r
 # Setting our split date for the hold-out set
 split_date <- as.Date('1997-12-31')
 
@@ -115,33 +143,39 @@ df_rfm <- df %>%
 df_rfm[1:5, ]
 ```
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["cust"],"name":[1],"type":["int"],"align":["right"]},{"label":["recency"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["frequency"],"name":[3],"type":["int"],"align":["right"]},{"label":["monetary_value"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["returns"],"name":[5],"type":["fct"],"align":["left"]}],"data":[{"1":"1","2":"364","3":"1","4":"11.770","5":"0"},{"1":"2","2":"353","3":"2","4":"44.500","5":"0"},{"1":"3","2":"36","3":"5","4":"27.894","5":"1"},{"1":"4","2":"19","3":"4","4":"25.125","5":"0"},{"1":"5","2":"19","3":"10","4":"34.814","5":"1"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+    ## # A tibble: 5 x 5
+    ##    cust recency frequency monetary_value returns
+    ##   <int>   <dbl>     <int>          <dbl> <fct>  
+    ## 1     1     364         1           11.8 0      
+    ## 2     2     353         2           44.5 0      
+    ## 3     3      36         5           27.9 1      
+    ## 4     4      19         4           25.1 0      
+    ## 5     5      19        10           34.8 1
 
-Here we also included our target variable (`returns`), which indicates whether a customer makes at least one purchase in our hold-out period. Let's look at some statistics for these variables.
+Here we also included our target variable (`returns`), which indicates
+whether a customer makes at least one purchase in our hold-out period.
+Let’s look at some statistics for these variables.
 
-
-```r
+``` r
 summary(df_rfm[-1])
 ```
 
-```
-##     recency        frequency       monetary_value    returns  
-##  Min.   :  0.0   Min.   :  1.000   Min.   :   0.00   0:18196  
-##  1st Qu.:158.0   1st Qu.:  1.000   1st Qu.:  14.96   1: 5374  
-##  Median :296.0   Median :  1.000   Median :  24.84            
-##  Mean   :243.4   Mean   :  2.414   Mean   :  32.63            
-##  3rd Qu.:327.0   3rd Qu.:  3.000   3rd Qu.:  39.82            
-##  Max.   :364.0   Max.   :143.000   Max.   :1119.68
-```
+    ##     recency        frequency       monetary_value    returns  
+    ##  Min.   :  0.0   Min.   :  1.000   Min.   :   0.00   0:18196  
+    ##  1st Qu.:158.0   1st Qu.:  1.000   1st Qu.:  14.96   1: 5374  
+    ##  Median :296.0   Median :  1.000   Median :  24.84            
+    ##  Mean   :243.4   Mean   :  2.414   Mean   :  32.63            
+    ##  3rd Qu.:327.0   3rd Qu.:  3.000   3rd Qu.:  39.82            
+    ##  Max.   :364.0   Max.   :143.000   Max.   :1119.68
 
-It turns out that approximately 23\% (5,374/(18,196+5,374)) of our sample returns over our hold-out set. Furthermore, it appears we do have some rather big spenders judging from the max frequency and monetary value. Let's take a closer look at the distributions of our RFM variables. We can also group the customers by our target variable, to see if there are some differences here.
+It turns out that approximately 23% (5,374/(18,196+5,374)) of our sample
+returns over our hold-out set. Furthermore, it appears we do have some
+rather big spenders judging from the max frequency and monetary value.
+Let’s take a closer look at the distributions of our RFM variables. We
+can also group the customers by our target variable, to see if there are
+some differences here.
 
-
-```r
+``` r
 ggplot2::theme_set(theme_bw())
 
 # Function for each individual plot
@@ -158,30 +192,74 @@ grid.arrange(grobs = plot_list,
              nrow = 3)
 ```
 
-![](README_figs/README-hist plot-1.png)<!-- -->
+![](README_figs/README-hist%20plot-1.png)<!-- -->
 
-This shows even more clearly that some of our customers are much more active than the majority. If we would not be sure that our raw data is clean (in our case it is), it might be a good idea to look into the transaction records of these customers and look for any errors. In our data these very active customers might be resellers, for example. (Note that the heterogeneity in the customer base might be a good reason to incorporate some type of segmentation into our models. For simplicity sake we forego this, but an interesting example of a BTYD model that can do this is [this paper](https://doi.org/10.1287/mksc.1090.0502) by Abe (2008).)
+This shows even more clearly that some of our customers are much more
+active than the majority. If we would not be sure that our raw data is
+clean (in our case it is), it might be a good idea to look into the
+transaction records of these customers and look for any errors. In our
+data these very active customers might be resellers, for example. (Note
+that the heterogeneity in the customer base might be a good reason to
+incorporate some type of segmentation into our models. For simplicity
+sake we forego this, but an interesting example of a BTYD model that can
+do this is [this paper](https://doi.org/10.1287/mksc.1090.0502) by Abe
+(2008).)
 
-The recency plot does seem to indicate that customers that have purchased more recently, are more likely to returns in the hold-out, which is to be expected. 
+The recency plot does seem to indicate that customers that have
+purchased more recently, are more likely to returns in the hold-out,
+which is to be expected.
 
 ## 3. Predicting returns
-Our goal is to predict the outcome of the `returns` variable. To do so we make use of so-called `but-till-you-die' (BTYD) models, which we compare to a baseline heuristic.
+
+Our goal is to predict the outcome of the `returns` variable. To do so
+we make use of so-called \`but-till-you-die’ (BTYD) models, which we
+compare to a baseline heuristic.
 
 ### 3.1 Pareto/NBD and BG/NBD model
-The Pareto/NBD model by [Schmittlein et al. (1987)](https://doi.org/10.1287/mnsc.33.1.1) stands at the helm of the BTYD models. A more detailed overview of BTYD models can be found [here](http://www.brucehardie.com/talks/ho_cba_tut_art_13.pdf), but roughly these models are built on three components. The first component is a *transaction process* for the occurrence of purchases whilst a customer is 'alive'. E.g. in the Pareto/NBD model, a customer's purchases are assumed to be the product of a Poisson process, dictated by a specific transaction rate. The second component is a *defection process* that determines when a customer churns. For the Pareto/NBD model, the length of the customer's lifetime is assumed to be distributed according to an exponential distribution with a certain defection rate parameter. The third component consists of the structure that allows for *heterogeneity* in these processes across customers. For example, in the Pareto/NBD model the transaction and defection rate parameters are assumed to be distributed over the customer base according to two separate gamma (prior) distributions.
 
-The BG/NBD model by [Fader et al. (2005)](https://doi.org/10.1287/mksc.1040.0098) was later introduced to provide a (more simple) alternative to the Pareto/NBD model. The largest change was the alteration of the defection process into one based on an intuitive discrete mechanism. Specifically, it was now assumed that churn was the result of a simple 'coin flip' after each *repeat* purchase. The defection rate parameter now constitutes the probability with which churn occurs for each customer.
+The Pareto/NBD model by [Schmittlein et
+al. (1987)](https://doi.org/10.1287/mnsc.33.1.1) stands at the helm of
+the BTYD models. A more detailed overview of BTYD models can be found
+[here](http://www.brucehardie.com/talks/ho_cba_tut_art_13.pdf), but
+roughly these models are built on three components. The first component
+is a *transaction process* for the occurrence of purchases whilst a
+customer is ‘alive’. E.g. in the Pareto/NBD model, a customer’s
+purchases are assumed to be the product of a Poisson process, dictated
+by a specific transaction rate. The second component is a *defection
+process* that determines when a customer churns. For the Pareto/NBD
+model, the length of the customer’s lifetime is assumed to be
+distributed according to an exponential distribution with a certain
+defection rate parameter. The third component consists of the structure
+that allows for *heterogeneity* in these processes across customers. For
+example, in the Pareto/NBD model the transaction and defection rate
+parameters are assumed to be distributed over the customer base
+according to two separate gamma (prior) distributions.
 
-To implement these models, we use the [`BTYD`](https://CRAN.R-project.org/package=BTYD) package in R. In order to be fitted, these models require three pieces of information for each customer:
+The BG/NBD model by [Fader et
+al. (2005)](https://doi.org/10.1287/mksc.1040.0098) was later introduced
+to provide a (more simple) alternative to the Pareto/NBD model. The
+largest change was the alteration of the defection process into one
+based on an intuitive discrete mechanism. Specifically, it was now
+assumed that churn was the result of a simple ‘coin flip’ after each
+*repeat* purchase. The defection rate parameter now constitutes the
+probability with which churn occurs for each customer.
 
-* `x` = Number of *repeat* purchases (e.g. excl. first purchase)
-* `t.x` = Number of days between a customer's first and last purchase
-* `T.cal` = Number of days since the customer's first purchase
+To implement these models, we use the
+[`BTYD`](https://CRAN.R-project.org/package=BTYD) package in R. In order
+to be fitted, these models require three pieces of information for each
+customer:
 
-One could use the `BTYD` package to create this data frame, but creating it ourselves provides more transparency. We create these three variables using our training period and once again create the `returns` variable for our hold-out period. We also create the `recency` variable we saw earlier, which we will later use in our baseline heuristic.
+-   `x` = Number of *repeat* purchases (e.g. excl. first purchase)
+-   `t.x` = Number of days between a customer’s first and last purchase
+-   `T.cal` = Number of days since the customer’s first purchase
 
+One could use the `BTYD` package to create this data frame, but creating
+it ourselves provides more transparency. We create these three variables
+using our training period and once again create the `returns` variable
+for our hold-out period. We also create the `recency` variable we saw
+earlier, which we will later use in our baseline heuristic.
 
-```r
+``` r
 # Making a dataframe to be used by the BTYD package
 # Note that for our problem and model, we only need the dates and the id's
 df_model <- unique(df[c('cust', 'date')]) %>%
@@ -197,16 +275,19 @@ df_model <- unique(df[c('cust', 'date')]) %>%
 df_model[1:5, ]
 ```
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["cust"],"name":[1],"type":["int"],"align":["right"]},{"label":["x"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["t.x"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["T.cal"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["recency"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["returns"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"1","2":"0","3":"0","4":"364","5":"364","6":"0","_rn_":"1"},{"1":"2","2":"0","3":"0","4":"353","5":"353","6":"0","_rn_":"2"},{"1":"3","2":"4","3":"327","4":"363","5":"36","6":"1","_rn_":"3"},{"1":"4","2":"3","3":"345","4":"364","5":"19","6":"0","_rn_":"4"},{"1":"5","2":"9","3":"345","4":"364","5":"19","6":"1","_rn_":"5"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+    ##   cust x t.x T.cal recency returns
+    ## 1    1 0   0   364     364       0
+    ## 2    2 0   0   353     353       0
+    ## 3    3 4 327   363      36       1
+    ## 4    4 3 345   364      19       0
+    ## 5    5 9 345   364      19       1
 
-We now fit the two models, which consists of finding estimates (through a method called [empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) estimation) for the parameters of the prior distributions. 
+We now fit the two models, which consists of finding estimates (through
+a method called [empirical
+Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) estimation)
+for the parameters of the prior distributions.
 
-
-```r
+``` r
 # Fitting our models
 pnbd_params <- pnbd.EstimateParameters(df_model)
 bgnbd_params <- bgnbd.EstimateParameters(df_model)
@@ -215,17 +296,35 @@ cat('Pareto/NBD parameters (r, alpha, s, beta):',  round(pnbd_params, 2), '\n',
     'BG/NBD parameters (r, alpha, a, b):',  round(bgnbd_params, 2), sep = ' ')
 ```
 
-```
-## Pareto/NBD parameters (r, alpha, s, beta): 0.61 87.11 0.36 42.84 
-##  BG/NBD parameters (r, alpha, a, b): 0.27 38.08 0.6 2.23
-```
+    ## Pareto/NBD parameters (r, alpha, s, beta): 0.61 87.11 0.36 42.84 
+    ##  BG/NBD parameters (r, alpha, a, b): 0.27 38.08 0.6 2.23
 
-We have now arrived at making our return prediction. Here some caution is warranted. One of the central results of the BTYD models is the so-called 'P(alive)' statistic. This statistic represents --- at a certain point in time --- the probability that a customer is alive, or has not yet churned. With the attention that this statistic receives, one might be tempted to (erroneously) use this statistic to make our return prediction. It should be noted however, that *a customer being alive is no guarantee of the customer actually making a purchase over the next period*. A customer might simply purchase infrequently, meaning they might not return over our half-year prediction interval. 
+We have now arrived at making our return prediction. Here some caution
+is warranted. One of the central results of the BTYD models is the
+so-called ‘P(alive)’ statistic. This statistic represents — at a certain
+point in time — the probability that a customer is alive, or has not yet
+churned. With the attention that this statistic receives, one might be
+tempted to (erroneously) use this statistic to make our return
+prediction. It should be noted however, that *a customer being alive is
+no guarantee of the customer actually making a purchase over the next
+period*. A customer might simply purchase infrequently, meaning they
+might not return over our half-year prediction interval.
 
-What some might not know is that these models are directly capable of producing a probability for a customer making at least one purchase over the next period. Derivations for these probabilities can be found [here](http://www.brucehardie.com/notes/028/pareto_nbd_conditional_pmf.pdf) for the Pareto/NBD model and [here](http://www.brucehardie.com/notes/039/bgnbd_derivation__2019-11-06.pdf) for the BG/NBD model. As a testament to how easy this is to miss, this probability is unfortunately not implemented in the `BTYD` package. In contrast to the 'P(alive)' statistic, we'll therefore have to code these probabilities ourselves. The code (hidden by default) for calculating **'return probability'** using the Pareto/NBD or BG/NBD model can be found below. It is written such that it can be combined seamlessly with the `BTYD` package.
+What some might not know is that these models are directly capable of
+producing a probability for a customer making at least one purchase over
+the next period. Derivations for these probabilities can be found
+[here](http://www.brucehardie.com/notes/028/pareto_nbd_conditional_pmf.pdf)
+for the Pareto/NBD model and
+[here](http://www.brucehardie.com/notes/039/bgnbd_derivation__2019-11-06.pdf)
+for the BG/NBD model. As a testament to how easy this is to miss, this
+probability is unfortunately not implemented in the `BTYD` package. In
+contrast to the ‘P(alive)’ statistic, we’ll therefore have to code these
+probabilities ourselves. The code (hidden by default) for calculating
+**‘return probability’** using the Pareto/NBD or BG/NBD model can be
+found below. It is written such that it can be combined seamlessly with
+the `BTYD` package.
 
-
-```{.r .fold-hide}
+``` r
 pnbd.ConditionalReturnProbability <- function (params, T.star, x, t.x, T.cal) 
 {
   max.length <- max(length(x), length(t.x), length(T.cal))
@@ -316,10 +415,17 @@ bgnbd.ConditionalReturnProbability <- function(params, T.star, x, t.x, T.cal)
 }
 ```
 
-To illustrate the performance difference between the P(alive) statistic and our own return probability statistic, we'll compare predictions using both approaches. To yield a final prediction. we'll use a cut-off value of 0.5. Note however, that this need not be (and likely is not) optimal. Yet, as we have do not have sufficient data to generate a validation period to set our cut-off, this will have to do. Furthermore, since we'll focus on general accuracy (we have no special interest in predicting either 1's or 0's), a well-calibrated model should do well at this cut-off.
+To illustrate the performance difference between the P(alive) statistic
+and our own return probability statistic, we’ll compare predictions
+using both approaches. To yield a final prediction. we’ll use a cut-off
+value of 0.5. Note however, that this need not be (and likely is not)
+optimal. Yet, as we have do not have sufficient data to generate a
+validation period to set our cut-off, this will have to do. Furthermore,
+since we’ll focus on general accuracy (we have no special interest in
+predicting either 1’s or 0’s), a well-calibrated model should do well at
+this cut-off.
 
-
-```r
+``` r
 # Calculate length of our hold-out period in days
 pred_days <- as.integer(max(df$date) - split_date)
 
@@ -355,18 +461,35 @@ df_model$bgnbd_alive_pred <- as.numeric(df_model$bgnbd_alive_prob > 0.5)
 ```
 
 ### 3.2 Baseline heuristics
-At this point we should ask how we even know whether our models are accurate? To put our model performance into perspective, we'll use two baseline predictions. The first one is the familiar majority rule, where we simply predict that no customer returns. Whilst a bit boring, this will yield an accuracy of 77\%. (Note that in reality we might not even know what the majority class is, and our training data might be too short to figure this out correctly)  
 
+At this point we should ask how we even know whether our models are
+accurate? To put our model performance into perspective, we’ll use two
+baseline predictions. The first one is the familiar majority rule, where
+we simply predict that no customer returns. Whilst a bit boring, this
+will yield an accuracy of 77%. (Note that in reality we might not even
+know what the majority class is, and our training data might be too
+short to figure this out correctly)
 
-```r
+``` r
 # Simple majority rule 
 df_model$majority_pred <- 0
 ```
 
-Our second baseline is one that seems to be the go-to in the literature on this subject (see for example [Wubben and Wangenheim (2008)](https://doi.org/10.1509/jmkg.72.3.082). This one is based on a 'hiatus heuristic' often set by managers or others familiar with the business or industry. This hiatus heuristic dictates that customers that have not returned *x* days are not expected to return over the next period either. In our case we have no acces to individuals that can give us such a heuristic. We can however make one ourselves and in the process make it even *better*. What we can do is optimize *x* based on our hold-out period, something which in reality would obviously not be possible. Yet, this way we find the best rule one could *possibly* set. If our models beat this, they'll beat whatever number a manager could've come up with!
+Our second baseline is one that seems to be the go-to in the literature
+on this subject (see for example [Wubben and Wangenheim
+(2008)](https://doi.org/10.1509/jmkg.72.3.082). This one is based on a
+‘hiatus heuristic’ often set by managers or others familiar with the
+business or industry. This hiatus heuristic dictates that customers that
+have not returned *x* days are not expected to return over the next
+period either. In our case we have no acces to individuals that can give
+us such a heuristic. We can however make one ourselves and in the
+process make it even *better*. What we can do is optimize *x* based on
+our hold-out period, something which in reality would obviously not be
+possible. Yet, this way we find the best rule one could *possibly* set.
+If our models beat this, they’ll beat whatever number a manager could’ve
+come up with!
 
-
-```r
+``` r
 # Function for finding the best cut-off for our heuristic
 find_cutoff <- function(recency, return){
   candidates <- seq(min(recency), max(recency))
@@ -391,18 +514,19 @@ df_model$heuristic_pred <- as.numeric(df_model$recency <= optimal_cutoff)
 cat('The optimal cut-off point lies at ', optimal_cutoff, ' days.', sep='')
 ```
 
-```
-## The optimal cut-off point lies at 81 days.
-```
-
+    ## The optimal cut-off point lies at 81 days.
 
 ## 4. Evaluating predictions
 
 ### 4.1 Cut-off dependent measures
-We now evaluate the performance of our models. We start by looking at the accuracy. Whilst we focus on the accuracy (we have no cost function/reason to look at 1's or 0's specifically), we provide the confusion matrix entries such that one can calculate any statistic of interest (F1 scores, recall etc.) themselves.
 
+We now evaluate the performance of our models. We start by looking at
+the accuracy. Whilst we focus on the accuracy (we have no cost
+function/reason to look at 1’s or 0’s specifically), we provide the
+confusion matrix entries such that one can calculate any statistic of
+interest (F1 scores, recall etc.) themselves.
 
-```r
+``` r
 # Function for evaluating predictions
 evaluate_pred <- function(pred, actual, names = NULL){
   if (is.null(names)){
@@ -431,21 +555,57 @@ round(evaluate_pred(df_model[c('pnbd_return_pred', 'bgnbd_return_pred',
               df_model$returns), 2)
 ```
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Accuracy"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["TP"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["FP"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["TN"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["FN"],"name":[5],"type":["dbl"],"align":["right"]}],"data":[{"1":"81.94","2":"2449","3":"1332","4":"16864","5":"2925","_rn_":"pnbd_return_pred"},{"1":"82.06","2":"2055","3":"910","4":"17286","5":"3319","_rn_":"bgnbd_return_pred"},{"1":"78.05","2":"3570","3":"3369","4":"14827","5":"1804","_rn_":"pnbd_alive_pred"},{"1":"31.43","2":"4460","3":"15249","4":"2947","5":"914","_rn_":"bgnbd_alive_pred"},{"1":"80.97","2":"2428","3":"1540","4":"16656","5":"2946","_rn_":"heuristic_pred"},{"1":"77.20","2":"0","3":"0","4":"18196","5":"5374","_rn_":"majority_pred"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
-We find notable performance differences between the performance using our return probability (`*_return_pred`) and the P(alive) statistic (`*_alive_pred`). This holds especially for the BG/NBD model, where the return probability yields an accuracy that is more than twice as high. By looking at the number of false positives, we have actually uncovered a big drawback over the BG/NBD model. We see that many customers are deemed alive (meaning they are predicted to return). Given that in the BG/NBD model, by construction customers can churn *only* after a repeat purchase, any customers with only one purchase (the initial purchase) are automatically deemed to be alive. This is problematic, as especially those customers that have been completely inactive after their first purchase would be unlikely to return. (For those interested, the MBG/NBD model by [Batislam et al. (2008)](https://doi.org/10.1016/j.ijresmar.2006.12.005) and CBG/NBD model by [Hoppe and Wagner (2007)](https://doi.org/10.15358/0344-1369-2007-JRM-2-75) both adjust the BG/NBD model in an attempt to tackle this.  
+    ##                   Accuracy   TP    FP    TN   FN
+    ## pnbd_return_pred     81.94 2449  1332 16864 2925
+    ## bgnbd_return_pred    82.06 2055   910 17286 3319
+    ## pnbd_alive_pred      78.05 3570  3369 14827 1804
+    ## bgnbd_alive_pred     31.43 4460 15249  2947  914
+    ## heuristic_pred       80.97 2428  1540 16656 2946
+    ## majority_pred        77.20    0     0 18196 5374
 
-If we look at our heuristics, we first see that our return probability prediction fortunately beats the majority rule by a decent margin. The hiatus heuristic prediction performs decently well, which is to be expected as it is optimized on our hold out set. Regardless, our two models manage to beat this baseline also. As for the differences between our models, the differences do not really seem conclusive. Yet, the Pareto/NBD model appears to perform better at predicting positives (returning customers), and worse at predicting negatives at this cut-off.
+We find notable performance differences between the performance using
+our return probability (`*_return_pred`) and the P(alive) statistic
+(`*_alive_pred`). This holds especially for the BG/NBD model, where the
+return probability yields an accuracy that is more than twice as high.
+By looking at the number of false positives, we have actually uncovered
+a big drawback over the BG/NBD model. We see that many customers are
+deemed alive (meaning they are predicted to return). Given that in the
+BG/NBD model, by construction customers can churn *only* after a repeat
+purchase, any customers with only one purchase (the initial purchase)
+are automatically deemed to be alive. This is problematic, as especially
+those customers that have been completely inactive after their first
+purchase would be unlikely to return. (For those interested, the MBG/NBD
+model by [Batislam et
+al. (2008)](https://doi.org/10.1016/j.ijresmar.2006.12.005) and CBG/NBD
+model by [Hoppe and Wagner
+(2007)](https://doi.org/10.15358/0344-1369-2007-JRM-2-75) both adjust
+the BG/NBD model in an attempt to tackle this.
+
+If we look at our heuristics, we first see that our return probability
+prediction fortunately beats the majority rule by a decent margin. The
+hiatus heuristic prediction performs decently well, which is to be
+expected as it is optimized on our hold out set. Regardless, our two
+models manage to beat this baseline also. As for the differences between
+our models, the differences do not really seem conclusive. Yet, the
+Pareto/NBD model appears to perform better at predicting positives
+(returning customers), and worse at predicting negatives at this
+cut-off.
 
 ### 4.1 Cut-off independent measures
 
-A drawback of looking at the above metrics is that they are cut-off dependent. A common alternative that represent general predictive accuracy is the area under the receiver operator characteristic curve [AUROC](https://towardsdatascience.com/intuition-behind-roc-auc-score-1456439d1f30). Another reason for looking past cut-off dependent measures is that we might be interested in the actual probability values. For example, it might be that managers want to use our models as an additional tool in determining who will return, together with other factors. To get a feel of how good our probability measures are, we can use the [log-loss](https://towardsdatascience.com/intuition-behind-log-loss-score-4e0c9979680a) score.
+A drawback of looking at the above metrics is that they are cut-off
+dependent. A common alternative that represent general predictive
+accuracy is the area under the receiver operator characteristic curve
+[AUROC](https://towardsdatascience.com/intuition-behind-roc-auc-score-1456439d1f30).
+Another reason for looking past cut-off dependent measures is that we
+might be interested in the actual probability values. For example, it
+might be that managers want to use our models as an additional tool in
+determining who will return, together with other factors. To get a feel
+of how good our probability measures are, we can use the
+[log-loss](https://towardsdatascience.com/intuition-behind-log-loss-score-4e0c9979680a)
+score.
 
-
-```r
+``` r
 # Function for evaluating probabilities
 evaluate_prob <- function(prob, actual, names = NULL){
   if (is.null(names)){
@@ -469,30 +629,61 @@ round(evaluate_prob(df_model[c('pnbd_return_prob', 'bgnbd_return_prob')],
               df_model$returns), 4)
 ```
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["AUROC"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["Log-loss"],"name":[2],"type":["dbl"],"align":["right"]}],"data":[{"1":"0.7998","2":"0.4208","_rn_":"pnbd_return_prob"},{"1":"0.7882","2":"0.4244","_rn_":"bgnbd_return_prob"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+    ##                    AUROC Log-loss
+    ## pnbd_return_prob  0.7998   0.4208
+    ## bgnbd_return_prob 0.7882   0.4244
 
-Again, differences between our models are small. Yet, the Pareto/NBD model seems to just edge out the BG/NBD model in both AUROC and log-loss performance. For this reason, the Pareto/NBD might be the model of choice for this dataset.
+Again, differences between our models are small. Yet, the Pareto/NBD
+model seems to just edge out the BG/NBD model in both AUROC and log-loss
+performance. For this reason, the Pareto/NBD might be the model of
+choice for this dataset.
 
 ## 5. Wrap-up
-We set out to predict which customers of a CD retailer would return over an upcoming half-year period. To make these predictions we trained on these customers' historical transaction data and employed the Pareto/NBD and BG/NBD model. To test our models we compared performance against a baseline heuristic, which we even optimized using the hold-out set. Both models beat the baseline, with the Pareto/NBD model performing slightly better on cut-off independent measures. We also found that one should be cautious in using the well-known P(alive) for this prediction task, with the 'return probability' for which we provide code giving far superior results.
+
+We set out to predict which customers of a CD retailer would return over
+an upcoming half-year period. To make these predictions we trained on
+these customers’ historical transaction data and employed the Pareto/NBD
+and BG/NBD model. To test our models we compared performance against a
+baseline heuristic, which we even optimized using the hold-out set. Both
+models beat the baseline, with the Pareto/NBD model performing slightly
+better on cut-off independent measures. We also found that one should be
+cautious in using the well-known P(alive) for this prediction task, with
+the ‘return probability’ for which we provide code giving far superior
+results.
 
 ## References
 
-[1] Fader, Peter S. and Bruce G.,S. Hardie, (2001), "Forecasting Repeat Sales at CDNOW: A Case Study," Interfaces, 31 (May-June), Part 2 of 2, S94-S107.  
-[2] https://en.wikipedia.org/wiki/RFM_(market_research)  
-[3] Abe, M. (2009). “Counting your customers” one by one: A hierarchical Bayes extension to the Pareto/NBD model. Marketing Science, 28(3), 541-553. 
-[4] Schmittlein, D. C., Morrison, D. G., & Colombo, R. (1987). Counting your customers: Who-are they and what will they do next?. Management science, 33(1), 1-24.  
-[5] Fader, P. S., & Hardie, B. G. (2009). Probability models for customer-base analysis. Journal of interactive marketing, 23(1), 61-69.  
-[7] Fader, P. S., Hardie, B. G., & Lee, K. L. (2005). “Counting your customers” the easy way: An alternative to the Pareto/NBD model. Marketing science, 24(2), 275-284.  
-[6] https://CRAN.R-project.org/package=BTYD
-[7] Fader, P. S. and Hardie, B. G. (2014). Deriving the Conditional PMF of the Pareto/NBD Model.  
-[8] Fader, P. S., Hardie, B. G., and Lee, K. L. (2019). A Step-by-Step Derivation of the BG/NBD Model.  
-[9] Wübben, M., & Wangenheim, F. V. (2008). Instant customer base analysis: Managerial heuristics often “get it right”. Journal of Marketing, 72(3), 82-93.  
-[10] Batislam, E. P., Denizel, M., and Filiztekin, A. (2007). Empirical validation and comparison of models for customer base analysis. International Journal of Research in Marketing, 24(3):201–209.  
-[11] Hoppe, D. and Wagner, U. (2007). Customer base analysis: The case for a central variant of the Betageometric/NBD model. Marketing ZFP, 29(JRM 2):75–90.  
-[12] https://towardsdatascience.com/intuition-behind-roc-auc-score-1456439d1f30   
-[13] https://towardsdatascience.com/intuition-behind-log-loss-score-4e0c9979680a
+\[1\] Fader, Peter S. and Bruce G.,S. Hardie, (2001), “Forecasting
+Repeat Sales at CDNOW: A Case Study,” Interfaces, 31 (May-June), Part 2
+of 2, S94-S107.  
+\[2\] <https://en.wikipedia.org/wiki/RFM_(market_research)>  
+\[3\] Abe, M. (2009). “Counting your customers” one by one: A
+hierarchical Bayes extension to the Pareto/NBD model. Marketing Science,
+28(3), 541-553. \[4\] Schmittlein, D. C., Morrison, D. G., & Colombo, R.
+(1987). Counting your customers: Who-are they and what will they do
+next?. Management science, 33(1), 1-24.  
+\[5\] Fader, P. S., & Hardie, B. G. (2009). Probability models for
+customer-base analysis. Journal of interactive marketing, 23(1),
+61-69.  
+\[7\] Fader, P. S., Hardie, B. G., & Lee, K. L. (2005). “Counting your
+customers” the easy way: An alternative to the Pareto/NBD model.
+Marketing science, 24(2), 275-284.  
+\[6\] <https://CRAN.R-project.org/package=BTYD> \[7\] Fader, P. S. and
+Hardie, B. G. (2014). Deriving the Conditional PMF of the Pareto/NBD
+Model.  
+\[8\] Fader, P. S., Hardie, B. G., and Lee, K. L. (2019). A Step-by-Step
+Derivation of the BG/NBD Model.  
+\[9\] Wübben, M., & Wangenheim, F. V. (2008). Instant customer base
+analysis: Managerial heuristics often “get it right”. Journal of
+Marketing, 72(3), 82-93.  
+\[10\] Batislam, E. P., Denizel, M., and Filiztekin, A. (2007).
+Empirical validation and comparison of models for customer base
+analysis. International Journal of Research in Marketing,
+24(3):201–209.  
+\[11\] Hoppe, D. and Wagner, U. (2007). Customer base analysis: The case
+for a central variant of the Betageometric/NBD model. Marketing ZFP,
+29(JRM 2):75–90.  
+\[12\]
+<https://towardsdatascience.com/intuition-behind-roc-auc-score-1456439d1f30>  
+\[13\]
+<https://towardsdatascience.com/intuition-behind-log-loss-score-4e0c9979680a>
