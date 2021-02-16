@@ -1,11 +1,11 @@
-# Predicting which customer will return - Colin Huliselan
+# Predicting which customers will return - Colin Huliselan
 
 > ## Tl;dr
 > - Used the [Pareto/NBD](https://doi.org/10.1287/mnsc.33.1.1) and [BG/NBD](https://doi.org/10.1287/mksc.1040.0098) model to predict which customers will return over the next half year on the [CDNOW dataset](https://www.brucehardie.com/datasets/).
 > - Models outperformed a heuristic basline based on when the customer last made a purchase.
 > - Differences between models were small, with Pareto/NBD performing slightly better on AUROC and log-loss
 > - Popular P(alive) statistic is not approporiate for this task. We provide an alternative 'return probability' in code.
-> - Software/packages used: R, [`dplyr`](https://cran.r-project.org/web/packages/dplyr/index.html), [`BTYD`](https://CRAN.R-project.org/package=BTYD), [`ggplot2](https://cran.r-project.org/web/packages/ggplot2/index.html)
+> - Software/packages used: `R`, [`dplyr`](https://cran.r-project.org/web/packages/dplyr/index.html), [`BTYD`](https://CRAN.R-project.org/package=BTYD), [`ggplot2`](https://cran.r-project.org/web/packages/ggplot2/index.html)
 
 ## Motivation
 Predicting a customer's purchase behaviour is a central subject within data science for (e-)commerce. In this project we look at one specific prediction, which is that of figuring out which of our customers will return over the next period. Here, accurate predictions could be of great value, for example in guiding marketing efforts. For instance we might want to target campaigns that promote activity to those customers who we expect to not return in the near future. On the other hand we might want to 'reward' those who will. 
