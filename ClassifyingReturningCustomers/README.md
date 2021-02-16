@@ -1,4 +1,4 @@
-# Predicting which customer will return - Colin Huliselan
+# Predicting which customers will return - Colin Huliselan
 
 > ## Tl;dr
 > - Used the [Pareto/NBD](https://doi.org/10.1287/mnsc.33.1.1) and [BG/NBD](https://doi.org/10.1287/mksc.1040.0098) model to predict which customers will return over the next half year on the [CDNOW dataset](https://www.brucehardie.com/datasets/).
